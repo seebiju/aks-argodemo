@@ -1,5 +1,5 @@
 variable "prefix"             { type = string }
-variable "location"           { type = string  default = "southeastasia" } # Singapore
+variable "location"           { type = string  default = "southeastasia"} # Singapore
 variable "node_count"         { type = number  default = 2 }
 variable "node_size"          { type = string  default = "Standard_D4s_v5" }
 variable "dns_prefix"         { type = string  default = null }
