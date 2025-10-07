@@ -1,0 +1,42 @@
+name: infra-apply
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/infra-apply.yaml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init/Plan/Apply
+        working-directory: terraform
+        run: |
+          terraform init -input=false
+          terraform plan -out=tf.plan -input=false
+          terraform apply -auto-approve tf.plan
+
+      - name: Get AKS creds
+        run: |
+          az aks get-credentials -g "$(terraform -chdir=terraform output -raw resource_group)"                                  -n "$(terraform -chdir=terraform output -raw aks_name)" --overwrite-existing
+
+      - name: Bootstrap root app
+        run: |
+          kubectl apply -n argocd -f gitops/argocd/root-app.yaml

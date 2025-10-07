@@ -1,0 +1,66 @@
+# Argo CD with NGINX disabled (we'll route through Azure App Gateway via AGIC)
+server:
+  replicaCount: 2
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+
+controller:
+  replicaCount: 2
+
+dex:
+  enabled: true
+  image:
+    tag: v2.39.1
+  env:
+    - name: GODEBUG
+      value: "x509sha1=1"
+  config:
+    connectors:
+      - type: oidc
+        id: aad
+        name: Azure AD
+        config:
+          issuer: https://login.microsoftonline.com/${AAD_TENANT_ID}/v2.0
+          clientID: ${AAD_CLIENT_ID}
+          clientSecret: $dex.aad.clientSecret
+          redirectURI: https://${ARGOCd_HOST}/auth/callback
+          scopes:
+            - openid
+            - profile
+            - email
+          insecureEnableGroups: true
+
+configs:
+  cm:
+    url: https://${ARGOCd_HOST}
+    oidc.config: |
+      name: AzureAD
+      issuer: https://login.microsoftonline.com/${AAD_TENANT_ID}/v2.0
+      clientID: ${AAD_CLIENT_ID}
+      clientSecret: $argocd-oidc-secret:CLIENT_SECRET
+      requestedScopes: ["openid", "profile", "email", "groups"]
+  rbac:
+    policy.csv: |
+      p, role:readers, applications, get, */*, allow
+      g, system:authenticated, role:readers
+  params:
+    server.insecure: true
+
+# Expose Argo CD via Service of type ClusterIP; App Gateway will route to it via AGIC-managed Ingress below
+# Create an Ingress specifically for Argo CD (internal routing only) - AGIC reads standard Ingress
+server:
+  extraIngress:
+    enabled: true
+    ingressClassName: azure-application-gateway
+    annotations:
+      kubernetes.io/ingress.class: azure/application-gateway
+      appgw.ingress.kubernetes.io/backend-path-prefix: /
+      appgw.ingress.kubernetes.io/ssl-redirect: "true"
+    hosts:
+      - ${ARGOCd_HOST}
+    tls:
+      - hosts:
+          - ${ARGOCd_HOST}
+        secretName: argocd-tls # provide via cert-manager or pre-created secret
