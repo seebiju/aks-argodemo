@@ -119,12 +119,12 @@ resource "azurerm_kubernetes_cluster" "aks" {
   identity { type = "SystemAssigned" }
 
   network_profile {
-    network_plugin       = "azure"  # Azure CNI
-    network_policy       = "azure"
-    dns_service_ip       = "10.2.0.10"
-    service_cidr         = "10.2.0.0/24"
-    docker_bridge_cidr   = "172.17.0.1/16"
-    outbound_type        = "loadBalancer"
+    network_plugin     = "azure" # Azure CNI
+    network_policy     = "azure"
+    dns_service_ip     = "10.2.0.10"
+    service_cidr       = "10.2.0.0/24"
+    docker_bridge_cidr = "172.17.0.1/16"
+    outbound_type      = "loadBalancer"
   }
 
   api_server_access_profile {
@@ -141,7 +141,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
 
   lifecycle {
-    ignore_changes = [ default_node_pool[0].node_count ]
+    ignore_changes = [default_node_pool[0].node_count]
   }
 }
 
@@ -178,9 +178,9 @@ resource "helm_release" "argocd" {
 
   values = [
     templatefile("${path.module}/../gitops/argocd/values-private-agic-aad.yaml", {
-      ARGOCd_HOST      = var.argocd_host
-      AAD_CLIENT_ID    = var.aad_client_id
-      AAD_TENANT_ID    = var.aad_tenant_id
+      ARGOCd_HOST   = var.argocd_host
+      AAD_CLIENT_ID = var.aad_client_id
+      AAD_TENANT_ID = var.aad_tenant_id
     })
   ]
 
